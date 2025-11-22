@@ -134,7 +134,7 @@ python3 -m http.server 8888</pre>
             <li>Open the calculator below (shows in iframe)</li>
             <li>Click "Run Tests" button</li>
             <li>Tests will run directly in the iframe</li>
-            <li>Results appear below</li>
+            <li>Results appear below - Now with <strong>10 tests</strong> including post-growth return testing</li>
         </ol>
         <button onclick="runManualTests()">🚀 Run Tests</button>
         <div class="stats" style="margin-top: 15px;">
@@ -481,6 +481,54 @@ python3 -m http.server 8888</pre>
                             maturityValue: '₹12,00,000',
                             wealthGained: '₹0',
                         }
+                    );
+                    
+                    runTest(
+                        'Test 9: Custom Post-Growth Return - 10% post-growth rate',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '10';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            doc.getElementById('postGrowthReturn').value = '10';
+                            return 'SIP: ₹10k/mo (10y @ 12%) | Post-growth: 10y @ 10% | Custom rate used';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹62,89,515',
+                        },
+                        1000
+                    );
+                    
+                    runTest(
+                        'Test 10: Post-Growth Default (0%) - Uses portfolio average',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '10';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            doc.getElementById('postGrowthReturn').value = '0';
+                            return 'SIP: ₹10k/mo (10y @ 12%) | Post-growth: 10y | Uses portfolio avg (12%)';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹76,68,088',
+                        },
+                        1000
                     );
                     
                     console.log(`Tests completed: ${totalTests} total, ${passedTests} passed, ${failedTests} failed`);

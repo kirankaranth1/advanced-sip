@@ -106,6 +106,56 @@
             margin-top: 3px;
             font-size: 0.8em;
         }
+        
+        /* Tooltip for info icons */
+        .label-with-info {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            background: #3f51b5;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.65em;
+            font-weight: bold;
+            cursor: help;
+            position: relative;
+        }
+        .info-icon:hover .tooltip {
+            display: block;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a237e;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            width: 250px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            line-height: 1.4;
+            font-weight: normal;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1a237e;
+        }
 
         /* Collapsible SIP Groups */
         .sip-group {
@@ -302,10 +352,20 @@
                     <span id="yearsValue">10 years</span>
                 </div>
 
-                 <div class="input-group slider-group">
-                    <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Investment Growth (Years)</label>
+                 <div class="input-group">
+                    <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Growth Period (Years)</label>
                     <input type="range" id="growthYears" min="0" max="50" value="0">
                     <span id="growthYearsValue">0 years</span>
+                </div>
+                
+                <div class="input-group">
+                    <label class="label-with-info">
+                        Post-Growth Return (%)
+                        <span class="info-icon">i
+                            <span class="tooltip">The annual return rate applied during the post-investment growth period. If left at 0%, it will use the average of all your portfolio returns.</span>
+                        </span>
+                    </label>
+                    <input type="number" id="postGrowthReturn" value="0" placeholder="0 = Use portfolio avg">
                 </div>
             </div>
         </fieldset>
@@ -483,6 +543,7 @@
         const annualSwpIncrease = parseFloat(document.getElementById('swpIncrease').value) / 100 || 0;
         const inflation = parseFloat(document.getElementById('inflation').value) / 100 || 0;
         const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
+        const postGrowthReturn = parseFloat(document.getElementById('postGrowthReturn').value) / 100 || 0;
 
         const totalGrowthYears = investmentYears + postInvestmentGrowthYears;
         const investmentMonths = investmentYears * 12;
@@ -548,13 +609,26 @@
         
         // --- 4. Post-Investment Growth Period (No SIP + Growth + SWP) ---
         for (let month = 1; month <= postInvestmentGrowthMonths; month++) {
-            // 4a. Apply growth
-            let totalGrowth = 0;
-            portfolios.forEach(p => {
-                const monthlyReturn = p.annualReturn / 12;
-                totalGrowth += corpus * monthlyReturn;
-            });
-            corpus += totalGrowth / portfolios.length;
+            // 4a. Apply growth using either custom post-growth rate or portfolio average
+            let monthlyReturn;
+            if (postGrowthReturn > 0) {
+                // Use the custom post-growth return rate
+                monthlyReturn = postGrowthReturn / 12;
+            } else {
+                // Use weighted average of portfolio returns (default behavior)
+                let totalGrowth = 0;
+                portfolios.forEach(p => {
+                    const portfolioMonthlyReturn = p.annualReturn / 12;
+                    totalGrowth += corpus * portfolioMonthlyReturn;
+                });
+                corpus += totalGrowth / portfolios.length;
+                monthlyReturn = 0; // Already applied
+            }
+            
+            // Apply growth if using custom rate
+            if (monthlyReturn > 0) {
+                corpus += corpus * monthlyReturn;
+            }
 
             // 4b. Apply SWP withdrawal (after growth)
             if (currentSwpAmount > 0) {
