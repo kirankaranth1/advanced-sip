@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Calculator</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .output {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        .error { color: #f44336; }
+        .success { color: #4caf50; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #3f51b5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #303f9f;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Calculator Debug Tool</h1>
+    
+    <div class="debug-panel">
+        <h2>Step 1: Load Calculator</h2>
+        <button onclick="loadCalculator()">Load Calculator in IFrame</button>
+        <div id="loadStatus" class="output">Click button to load...</div>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Step 2: Check Elements</h2>
+        <button onclick="checkElements()">Check DOM Elements</button>
+        <div id="elementsStatus" class="output">Load calculator first...</div>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Step 3: Set Test Values</h2>
+        <button onclick="setTestValues()">Set Test Values</button>
+        <div id="valuesStatus" class="output">Check elements first...</div>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Step 4: Run Calculation</h2>
+        <button onclick="runCalculation()">Run calculateSip()</button>
+        <div id="calcStatus" class="output">Set values first...</div>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Step 5: Read Results</h2>
+        <button onclick="readResults()">Read Results</button>
+        <div id="resultsStatus" class="output">Run calculation first...</div>
+    </div>
+
+    <iframe id="calc" src="index.html" style="width: 100%; height: 600px; border: 1px solid #ddd; margin-top: 20px;"></iframe>
+
+    <script>
+        const iframe = document.getElementById('calc');
+        let calcReady = false;
+
+        iframe.onload = function() {
+            calcReady = true;
+            document.getElementById('loadStatus').innerHTML = '<span class="success">✅ Calculator loaded successfully!</span>';
+        };
+
+        function loadCalculator() {
+            if (!calcReady) {
+                document.getElementById('loadStatus').innerHTML = 'Loading...';
+                iframe.src = 'index.html?' + Date.now(); // Force reload
+            } else {
+                document.getElementById('loadStatus').innerHTML = '<span class="success">✅ Already loaded!</span>';
+            }
+        }
+
+        function checkElements() {
+            if (!calcReady) {
+                document.getElementById('elementsStatus').innerHTML = '<span class="error">❌ Calculator not loaded yet!</span>';
+                return;
+            }
+
+            const doc = iframe.contentDocument;
+            const elements = [
+                'existingInvestment_0',
+                'monthlySip_0',
+                'sipIncrease_0',
+                'annualReturn_0',
+                'years',
+                'growthYears',
+                'swpType',
+                'swpAmount',
+                'swpIncrease',
+                'inflation',
+                'taxRate',
+                'totalInvested',
+                'maturityValue',
+                'totalWithdrawn',
+                'wealthGained'
+            ];
+
+            let output = '';
+            let allFound = true;
+
+            elements.forEach(id => {
+                const el = doc.getElementById(id);
+                if (el) {
+                    output += `✅ ${id}: ${el.tagName} (value: ${el.value || el.textContent})\n`;
+                } else {
+                    output += `❌ ${id}: NOT FOUND\n`;
+                    allFound = false;
+                }
+            });
+
+            output += `\n${allFound ? '✅ All elements found!' : '❌ Some elements missing!'}`;
+            document.getElementById('elementsStatus').innerHTML = output;
+        }
+
+        function setTestValues() {
+            if (!calcReady) {
+                document.getElementById('valuesStatus').innerHTML = '<span class="error">❌ Calculator not loaded yet!</span>';
+                return;
+            }
+
+            const doc = iframe.contentDocument;
+            
+            try {
+                doc.getElementById('existingInvestment_0').value = '0';
+                doc.getElementById('monthlySip_0').value = '10000';
+                doc.getElementById('sipIncrease_0').value = '0';
+                doc.getElementById('annualReturn_0').value = '12';
+                doc.getElementById('years').value = '10';
+                doc.getElementById('growthYears').value = '0';
+                doc.getElementById('swpType').value = 'none';
+                doc.getElementById('swpAmount').value = '0';
+                doc.getElementById('swpIncrease').value = '0';
+                doc.getElementById('inflation').value = '0';
+                doc.getElementById('taxRate').value = '0';
+
+                let output = '✅ Test values set successfully:\n\n';
+                output += `Monthly SIP: ₹${doc.getElementById('monthlySip_0').value}\n`;
+                output += `Annual Return: ${doc.getElementById('annualReturn_0').value}%\n`;
+                output += `Duration: ${doc.getElementById('years').value} years\n`;
+                output += `No SWP, No Existing Investment\n`;
+                output += `\nExpected Results:\n`;
+                output += `Total Invested: ₹12,00,000\n`;
+                output += `Maturity Value: ₹23,00,387 (approx)\n`;
+
+                document.getElementById('valuesStatus').innerHTML = output;
+            } catch (error) {
+                document.getElementById('valuesStatus').innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        function runCalculation() {
+            if (!calcReady) {
+                document.getElementById('calcStatus').innerHTML = '<span class="error">❌ Calculator not loaded yet!</span>';
+                return;
+            }
+
+            const calc = iframe.contentWindow;
+            
+            try {
+                if (typeof calc.calculateSip !== 'function') {
+                    throw new Error('calculateSip function not found!');
+                }
+
+                calc.calculateSip();
+                
+                document.getElementById('calcStatus').innerHTML = '<span class="success">✅ calculateSip() executed successfully!</span>';
+            } catch (error) {
+                document.getElementById('calcStatus').innerHTML = `<span class="error">❌ Error: ${error.message}\n${error.stack}</span>`;
+            }
+        }
+
+        function readResults() {
+            if (!calcReady) {
+                document.getElementById('resultsStatus').innerHTML = '<span class="error">❌ Calculator not loaded yet!</span>';
+                return;
+            }
+
+            const doc = iframe.contentDocument;
+            
+            try {
+                const totalInvested = doc.getElementById('totalInvested').textContent;
+                const maturityValue = doc.getElementById('maturityValue').textContent;
+                const totalWithdrawn = doc.getElementById('totalWithdrawn').textContent;
+                const wealthGained = doc.getElementById('wealthGained').textContent;
+                const valueAfterTax = doc.getElementById('valueAfterTax').textContent;
+                const inflationAdjusted = doc.getElementById('inflationAdjustedValue').textContent;
+
+                let output = '📊 Actual Results from Calculator:\n\n';
+                output += `Total Invested: ${totalInvested}\n`;
+                output += `Maturity Value: ${maturityValue}\n`;
+                output += `Total Withdrawn: ${totalWithdrawn}\n`;
+                output += `Wealth Gained: ${wealthGained}\n`;
+                output += `Value After Tax: ${valueAfterTax}\n`;
+                output += `Inflation Adjusted: ${inflationAdjusted}\n\n`;
+
+                // Parse and compare
+                const maturityNum = parseFloat(maturityValue.replace(/[₹,]/g, ''));
+                const expectedMaturity = 2300387;
+                const diff = Math.abs(maturityNum - expectedMaturity);
+                
+                output += '🔍 Comparison:\n';
+                output += `Expected Maturity: ₹23,00,387\n`;
+                output += `Actual Maturity: ${maturityValue}\n`;
+                output += `Difference: ₹${Math.round(diff).toLocaleString('en-IN')}\n`;
+                output += diff < 5000 ? '\n✅ PASS (within tolerance)' : '\n❌ FAIL (exceeds tolerance)';
+
+                document.getElementById('resultsStatus').innerHTML = output;
+            } catch (error) {
+                document.getElementById('resultsStatus').innerHTML = `<span class="error">❌ Error: ${error.message}\n${error.stack}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
+

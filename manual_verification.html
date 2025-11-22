@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Verification - Simple SIP Calculation</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h2 { color: #1a237e; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: right;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #3f51b5;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .highlight {
+            background: #fff9c4 !important;
+            font-weight: bold;
+        }
+        .summary {
+            background: #e8eaf6;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .formula {
+            background: #f5f5f5;
+            padding: 10px;
+            border-left: 4px solid #3f51b5;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📊 Manual Verification: Simple SIP Calculation</h2>
+        
+        <div class="summary">
+            <strong>Test Parameters:</strong><br>
+            - Monthly SIP: ₹10,000<br>
+            - Annual Return: 12% (1% monthly)<br>
+            - Duration: 12 months (1 year)<br>
+            - No existing investment<br>
+            - No withdrawals (SWP)<br>
+            - No step-up
+        </div>
+
+        <div class="formula">
+            <strong>Formula:</strong><br>
+            Each month: corpus = (corpus + SIP) × (1 + monthly_return)<br>
+            Or equivalently:<br>
+            corpus = corpus + SIP<br>
+            corpus = corpus + (corpus × monthly_return)
+        </div>
+
+        <h3>Month-by-Month Breakdown:</h3>
+        <table id="calcTable">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Opening Balance</th>
+                    <th>SIP Added</th>
+                    <th>Before Growth</th>
+                    <th>Growth (1%)</th>
+                    <th>Closing Balance</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+
+        <div class="summary">
+            <h3>Final Results:</h3>
+            <div id="results"></div>
+        </div>
+
+        <h3>🔍 Expected vs Actual Comparison:</h3>
+        <div id="comparison" class="formula"></div>
+    </div>
+
+    <script>
+        const monthlySip = 10000;
+        const monthlyReturn = 0.01; // 12% annual = 1% monthly
+        const months = 12;
+
+        let corpus = 0;
+        let totalInvested = 0;
+        const tableBody = document.getElementById('tableBody');
+
+        // Calculate month by month
+        for (let month = 1; month <= months; month++) {
+            const opening = corpus;
+            const sipAdded = monthlySip;
+            const beforeGrowth = opening + sipAdded;
+            const growth = beforeGrowth * monthlyReturn;
+            const closing = beforeGrowth + growth;
+
+            // Add row to table
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${month}</td>
+                <td>₹${opening.toFixed(2)}</td>
+                <td>₹${sipAdded.toFixed(2)}</td>
+                <td>₹${beforeGrowth.toFixed(2)}</td>
+                <td>₹${growth.toFixed(2)}</td>
+                <td>₹${closing.toFixed(2)}</td>
+            `;
+            
+            if (month === months) {
+                row.classList.add('highlight');
+            }
+
+            corpus = closing;
+            totalInvested += sipAdded;
+        }
+
+        // Display results
+        const results = document.getElementById('results');
+        results.innerHTML = `
+            <strong>Total Invested:</strong> ₹${totalInvested.toLocaleString('en-IN')}<br>
+            <strong>Final Corpus:</strong> ₹${corpus.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>
+            <strong>Wealth Gained:</strong> ₹${(corpus - totalInvested).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>
+            <strong>Returns:</strong> ${((corpus - totalInvested) / totalInvested * 100).toFixed(2)}%
+        `;
+
+        // Using standard FV formula for SIP
+        // FV = P × [((1 + r)^n - 1) / r] × (1 + r)
+        const r = monthlyReturn;
+        const n = months;
+        const P = monthlySip;
+        const FV_formula = P * (((Math.pow(1 + r, n) - 1) / r) * (1 + r));
+
+        const comparison = document.getElementById('comparison');
+        comparison.innerHTML = `
+            <strong>Manual Month-by-Month Calculation:</strong> ₹${corpus.toFixed(2)}<br>
+            <strong>Standard FV Formula Result:</strong> ₹${FV_formula.toFixed(2)}<br>
+            <strong>Difference:</strong> ₹${Math.abs(corpus - FV_formula).toFixed(2)}<br>
+            <br>
+            <strong>✅ Status:</strong> ${Math.abs(corpus - FV_formula) < 1 ? 'MATCH - Calculations are correct!' : 'MISMATCH - Check calculations'}
+        `;
+
+        // Expected value for 1 year at 12% with 10k/month
+        // Using financial calculator or Excel: ≈ ₹126,825
+        console.log('Month-by-month result:', corpus.toFixed(2));
+        console.log('FV formula result:', FV_formula.toFixed(2));
+        console.log('Expected (approx):', '₹126,825');
+    </script>
+</body>
+</html>
+

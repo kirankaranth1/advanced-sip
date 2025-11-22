@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Multi-SIP, SWP, and Tax Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .calculator-container {
+            background-color: #ffffff;
+            padding: 25px 35px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            max-width: 800px;
+            width: 100%;
+        }
+        h2, h3 {
+            color: #1a237e;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        fieldset {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        legend {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #3f51b5;
+            padding: 0 10px;
+        }
+
+        .inputs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group label {
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .input-group input, .input-group select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        .input-group input[type="range"] {
+            padding: 0;
+        }
+        .slider-group {
+            grid-column: span 2;
+            padding-bottom: 10px; 
+        }
+        #yearsValue, #growthYearsValue {
+            font-weight: bold;
+            color: #3f51b5;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        /* Styling for the new SIP group container */
+        .sip-group {
+            border: 1px dashed #cfd8dc;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .sip-group h4 {
+            margin-top: 0;
+            color: #1a237e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1em;
+        }
+        .remove-btn {
+            background: #e57373;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background 0.3s;
+        }
+        .remove-btn:hover {
+            background: #d32f2f;
+        }
+        .add-sip-btn {
+            background-color: #4caf50;
+            color: white;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 0.95em;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        .add-sip-btn:hover {
+            background-color: #388e3c;
+        }
+        
+        .results {
+            margin-top: 30px;
+            background-color: #e8eaf6;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .results p {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 1.05em;
+        }
+        .results span {
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .inputs-grid {
+                grid-template-columns: 1fr;
+            }
+             .slider-group {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-container">
+    <h2>Advanced Multi-SIP, SWP, and Tax Calculator 📈</h2>
+    
+    <fieldset>
+        <legend>SIP & Investment Details</legend>
+        
+        <div id="sipInputsContainer">
+            </div>
+
+        <button class="add-sip-btn" id="addSipBtn" type="button">➕ Add another SIP portfolio</button>
+        
+    </fieldset>
+
+    <fieldset>
+        <legend>SWP & Withdrawal Details</legend>
+        <div class="inputs-grid">
+            <div class="input-group">
+                <label for="swpType">Withdrawal (SWP)</label>
+                <select id="swpType" title="Systematic Withdrawal Plan (SWP) frequency.">
+                    <option value="none">None</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="swpAmount">Withdrawal Amount (₹)</label>
+                <input type="number" id="swpAmount" value="0" placeholder="e.g., 5000" title="The amount you withdraw from the corpus at the selected SWP frequency.">
+            </div>
+             <div class="input-group">
+                <label for="swpIncrease">Annual SWP Increase (%)</label>
+                <input type="number" id="swpIncrease" value="0" placeholder="e.g., 5" title="The percentage by which your SWP amount increases each year to account for inflation.">
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Duration & Financial Parameters</legend>
+        <div class="inputs-grid">
+             <div class="input-group">
+                <label for="inflation">Annual Inflation Rate (%)</label>
+                <input type="number" id="inflation" value="6" placeholder="e.g., 6" title="Used to calculate the real, purchasing power-adjusted value of your maturity amount.">
+            </div>
+            <div class="input-group">
+                <label for="taxRate">Capital Gains Tax (%)</label>
+                <input type="number" id="taxRate" value="10" placeholder="e.g., 10" title="Long Term Capital Gains (LTCG) tax rate applied to the total profits (Maturity Value - Total Invested).">
+            </div>
+             <div class="input-group slider-group">
+                <label for="years" title="The total duration over which you will continue making the monthly SIP and/or SWP withdrawals.">Investment Period (Years) - *SIP/SWP duration*</label>
+                <input type="range" id="years" min="1" max="50" value="10">
+                <span id="yearsValue">10 years</span>
+            </div>
+
+             <div class="input-group slider-group">
+                <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Investment Growth Period (Years) - *After SIP ends*</label>
+                <input type="range" id="growthYears" min="0" max="50" value="0">
+                <span id="growthYearsValue">0 years</span>
+            </div>
+        </div>
+    </fieldset>
+    
+    <div class="results">
+        <h3>Investment Summary 📊</h3>
+        <p>Total Duration: <span id="totalDuration">0 years</span></p>
+        <p>Total Amount Invested: <span id="totalInvested">₹0</span></p>
+        <p>Total Amount Withdrawn: <span id="totalWithdrawn">₹0</span></p>
+        <p><b>Wealth Gained:</b> <span id="wealthGained">₹0</span></p>
+        <hr>
+        <p>Maturity Value: <span id="maturityValue">₹0</span></p>
+        <p>Value After Tax: <span id="valueAfterTax">₹0</span></p>
+        <p><b>Inflation-Adjusted Value (Today's Worth):</b> <span id="inflationAdjustedValue">₹0</span></p>
+    </div>
+</div>
+
+<script>
+    const yearsSlider = document.getElementById('years');
+    const yearsValueSpan = document.getElementById('yearsValue');
+    const growthYearsSlider = document.getElementById('growthYears');
+    const growthYearsValueSpan = document.getElementById('growthYearsValue');
+    const sipInputsContainer = document.getElementById('sipInputsContainer');
+    const addSipBtn = document.getElementById('addSipBtn');
+    let sipGroupIndex = 0; 
+
+    // --- Utility Functions ---
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(Math.round(value));
+    }
+
+    function addInputListeners() {
+        // Add listeners for dynamic input fields within the SIP container
+        const allInputs = sipInputsContainer.querySelectorAll('input[type="number"]');
+        allInputs.forEach(input => {
+            input.removeEventListener('input', calculateSip);
+            input.addEventListener('input', calculateSip);
+        });
+        // Also listen for changes in general inputs (swp, duration, tax, inflation)
+        document.querySelectorAll('input[type="number"]:not([id^="monthlySip_"]), select').forEach(input => {
+             input.removeEventListener('input', calculateSip);
+             input.addEventListener('input', calculateSip);
+        });
+    }
+
+    // --- SIP Group Management ---
+
+    function createSipGroupHtml(index, monthlySipValue = 10000, sipIncreaseValue = 10, annualReturnValue = 12, existingInvestmentValue = 0) {
+        const title = index === 0 ? "Default SIP Portfolio" : `SIP Portfolio #${index + 1}`;
+        const removeButton = index > 0 
+            ? `<button class="remove-btn" type="button" onclick="removeSipGroup(this)">Remove</button>`
+            : '';
+
+        return `
+            <div class="sip-group" data-index="${index}">
+                <h4>${title} ${removeButton}</h4>
+                <div class="inputs-grid">
+                    <div class="input-group">
+                        <label for="existingInvestment_${index}">Existing Investment (₹)</label>
+                        <input type="number" id="existingInvestment_${index}" value="${existingInvestmentValue}" placeholder="e.g., 500000" title="The current market value of your existing funds for this specific portfolio.">
+                    </div>
+                    <div class="input-group">
+                        <label for="monthlySip_${index}">Monthly SIP (₹)</label>
+                        <input type="number" id="monthlySip_${index}" value="${monthlySipValue}" placeholder="e.g., 10000" title="The fixed amount you invest every month.">
+                    </div>
+                    <div class="input-group">
+                        <label for="sipIncrease_${index}">Annual SIP Increase (%)</label>
+                        <input type="number" id="sipIncrease_${index}" value="${sipIncreaseValue}" placeholder="e.g., 10" title="The percentage by which your monthly SIP amount increases each year (Step-up SIP).">
+                    </div>
+                    <div class="input-group">
+                        <label for="annualReturn_${index}">Expected Annual Return (%)</label>
+                        <input type="number" id="annualReturn_${index}" value="${annualReturnValue}" placeholder="e.g., 12" title="The average annual rate of return you expect from this investment.">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function addSipGroup() {
+        sipInputsContainer.insertAdjacentHTML('beforeend', createSipGroupHtml(++sipGroupIndex, 10000, 10, 12, 0));
+        addInputListeners();
+        calculateSip();
+    }
+
+    function removeSipGroup(buttonElement) {
+        const group = buttonElement.closest('.sip-group');
+        group.remove();
+        
+        // Re-index remaining groups
+        let newIndex = 0;
+        document.querySelectorAll('.sip-group').forEach((g) => {
+            g.setAttribute('data-index', newIndex);
+            
+            g.querySelector('h4').innerHTML = newIndex === 0 
+                ? 'Default SIP Portfolio' 
+                : `SIP Portfolio #${newIndex + 1} <button class="remove-btn" type="button" onclick="removeSipGroup(this)">Remove</button>`;
+            
+            // Update IDs in the group 
+            g.querySelectorAll('input').forEach(input => {
+                const idParts = input.id.split('_');
+                input.id = idParts[0] + '_' + newIndex;
+                input.previousElementSibling.setAttribute('for', input.id);
+            });
+
+            newIndex++;
+        });
+        
+        addInputListeners(); 
+        sipGroupIndex = newIndex > 0 ? newIndex - 1 : 0; 
+        calculateSip();
+    }
+
+    /**
+     * Retrieves all SIP parameters from the DOM and initializes the calculation state.
+     */
+    function getInitialPortfolios() {
+        const portfolios = [];
+        document.querySelectorAll('.sip-group').forEach((group, index) => {
+            const existingInvestment = parseFloat(document.getElementById(`existingInvestment_${index}`).value) || 0;
+            const monthlySip = parseFloat(document.getElementById(`monthlySip_${index}`).value) || 0;
+            const annualSipIncrease = parseFloat(document.getElementById(`sipIncrease_${index}`).value) / 100 || 0;
+            const annualReturn = parseFloat(document.getElementById(`annualReturn_${index}`).value) / 100 || 0;
+            
+            portfolios.push({
+                existingInvestment,
+                monthlySip,
+                annualSipIncrease,
+                annualReturn,
+            });
+        });
+        return portfolios;
+    }
+
+    // --- Core Calculation Logic ---
+    function calculateSip() {
+        // --- 1. Get initial parameters & duration ---
+        const investmentYears = parseInt(document.getElementById('years').value);
+        const postInvestmentGrowthYears = parseInt(document.getElementById('growthYears').value);
+        const swpType = document.getElementById('swpType').value;
+        const swpAmount = parseFloat(document.getElementById('swpAmount').value) || 0;
+        const annualSwpIncrease = parseFloat(document.getElementById('swpIncrease').value) / 100 || 0;
+        const inflation = parseFloat(document.getElementById('inflation').value) / 100 || 0;
+        const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
+
+        const totalGrowthYears = investmentYears + postInvestmentGrowthYears;
+        const investmentMonths = investmentYears * 12;
+        const postInvestmentGrowthMonths = postInvestmentGrowthYears * 12;
+        
+        // --- 2. Initialize portfolios and tracking variables ---
+        const portfolios = getInitialPortfolios();
+        let corpus = 0;
+        let totalInvested = 0;
+        let totalWithdrawn = 0;
+
+        // Initialize corpus with existing investments from all portfolios
+        portfolios.forEach(p => {
+            corpus += p.existingInvestment;
+            totalInvested += p.existingInvestment;
+        });
+
+        // Track current SIP amounts for each portfolio
+        const currentMonthlySips = portfolios.map(p => p.monthlySip);
+        let currentSwpAmount = swpAmount;
+
+        // --- 3. Investment Period (SIP + Growth + SWP) ---
+        for (let month = 1; month <= investmentMonths; month++) {
+            // 3a. Add SIP contributions from all portfolios
+            portfolios.forEach((p, index) => {
+                if (currentMonthlySips[index] > 0) {
+                    corpus += currentMonthlySips[index];
+                    totalInvested += currentMonthlySips[index];
+                }
+            });
+
+            // 3b. Apply growth (weighted average of all portfolio returns)
+            let totalGrowth = 0;
+            portfolios.forEach(p => {
+                const monthlyReturn = p.annualReturn / 12;
+                totalGrowth += corpus * monthlyReturn;
+            });
+            corpus += totalGrowth / portfolios.length;
+
+            // 3c. Apply SWP withdrawal (after growth)
+            if (currentSwpAmount > 0) {
+                if (swpType === 'monthly') {
+                    corpus -= currentSwpAmount;
+                    totalWithdrawn += currentSwpAmount;
+                } else if (swpType === 'yearly' && month % 12 === 0) {
+                    corpus -= currentSwpAmount;
+                    totalWithdrawn += currentSwpAmount;
+                }
+            }
+
+            // 3d. Process annual increases at year end
+            if (month % 12 === 0 && month < investmentMonths) {
+                portfolios.forEach((p, index) => {
+                    if (p.annualSipIncrease > 0) {
+                        currentMonthlySips[index] *= (1 + p.annualSipIncrease);
+                    }
+                });
+                if (annualSwpIncrease > 0) {
+                    currentSwpAmount *= (1 + annualSwpIncrease);
+                }
+            }
+        }
+        
+        // --- 4. Post-Investment Growth Period (No SIP + Growth + SWP) ---
+        for (let month = 1; month <= postInvestmentGrowthMonths; month++) {
+            // 4a. Apply growth
+            let totalGrowth = 0;
+            portfolios.forEach(p => {
+                const monthlyReturn = p.annualReturn / 12;
+                totalGrowth += corpus * monthlyReturn;
+            });
+            corpus += totalGrowth / portfolios.length;
+
+            // 4b. Apply SWP withdrawal (after growth)
+            if (currentSwpAmount > 0) {
+                if (swpType === 'monthly') {
+                    corpus -= currentSwpAmount;
+                    totalWithdrawn += currentSwpAmount;
+                } else if (swpType === 'yearly' && month % 12 === 0) {
+                    corpus -= currentSwpAmount;
+                    totalWithdrawn += currentSwpAmount;
+                }
+            }
+
+            // 4c. Process annual SWP increases
+            if (month % 12 === 0 && month < postInvestmentGrowthMonths) {
+                if (annualSwpIncrease > 0) {
+                    currentSwpAmount *= (1 + annualSwpIncrease);
+                }
+            }
+        }
+
+        // --- 5. Final Result Calculation ---
+        const maturityValue = corpus > 0 ? corpus : 0;
+        // Ensure accurate calculation by rounding to prevent floating point issues before final arithmetic
+        const roundedMaturityValue = Math.round(maturityValue * 100) / 100;
+        const roundedTotalInvested = Math.round(totalInvested * 100) / 100;
+        const roundedTotalWithdrawn = Math.round(totalWithdrawn * 100) / 100;
+        
+        const wealthGained = (roundedMaturityValue - roundedTotalInvested) + roundedTotalWithdrawn; 
+        
+        const taxOnGains = wealthGained > 0 ? wealthGained * taxRate : 0;
+        const valueAfterTax = roundedMaturityValue - taxOnGains;
+        
+        const inflationAdjustedValue = roundedMaturityValue / Math.pow(1 + inflation, totalGrowthYears);
+
+        // --- 6. Display results ---
+        document.getElementById('totalDuration').textContent = `${totalGrowthYears} years`;
+        document.getElementById('totalInvested').textContent = formatCurrency(roundedTotalInvested);
+        document.getElementById('totalWithdrawn').textContent = formatCurrency(roundedTotalWithdrawn);
+        document.getElementById('wealthGained').textContent = formatCurrency(wealthGained);
+        document.getElementById('maturityValue').textContent = formatCurrency(roundedMaturityValue);
+        document.getElementById('valueAfterTax').textContent = formatCurrency(valueAfterTax);
+        document.getElementById('inflationAdjustedValue').textContent = formatCurrency(inflationAdjustedValue);
+    }
+
+    // --- Initial Setup and Event Listeners ---
+    
+    // Slider Listeners (Calls calculateSip for automatic updates)
+    yearsSlider.addEventListener('input', () => {
+        yearsValueSpan.textContent = `${yearsSlider.value} years`;
+        calculateSip();
+    });
+    growthYearsSlider.addEventListener('input', () => {
+        growthYearsValueSpan.textContent = `${growthYearsSlider.value} years`;
+        calculateSip();
+    });
+    
+    // FIX: Re-attaching the click listener to the 'Add another SIP portfolio' button.
+    addSipBtn.addEventListener('click', addSipGroup);
+
+    // Initial SIP Group Injection
+    sipInputsContainer.innerHTML = createSipGroupHtml(0);
+    
+    // Initial setup of sliders
+    const initialYears = 10;
+    const initialGrowthYears = 0;
+    yearsSlider.min = 1; 
+    yearsSlider.max = 50;
+    yearsSlider.value = initialYears;
+    
+    growthYearsSlider.min = 0;
+    growthYearsSlider.max = 50;
+    growthYearsSlider.value = initialGrowthYears;
+    
+    yearsValueSpan.textContent = `${initialYears} years`;
+    growthYearsValueSpan.textContent = `${initialGrowthYears} years`;
+
+    // Recalculate on input change
+    addInputListeners();
+
+    // Initial calculation and display update on page load
+    window.onload = calculateSip;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Integration Tests</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #1a237e; text-align: center; }
+        .info {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat {
+            text-align: center;
+            padding: 15px;
+            border-radius: 6px;
+            background: #f5f5f5;
+        }
+        .stat .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat.total .number { color: #2196f3; }
+        .stat.passed .number { color: #4caf50; }
+        .stat.failed .number { color: #f44336; }
+        .test {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .test.pass { border-left-color: #4caf50; }
+        .test.fail { border-left-color: #f44336; }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .test-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .test.pass .test-status {
+            background: #4caf50;
+            color: white;
+        }
+        .test.fail .test-status {
+            background: #f44336;
+            color: white;
+        }
+        .test-details {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 10px;
+        }
+        .result-line {
+            padding: 4px 0;
+        }
+        .result-line.match { color: #4caf50; }
+        .result-line.mismatch { color: #f44336; font-weight: bold; }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #3f51b5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover { background: #303f9f; }
+        #calculatorFrame {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Simple Integration Tests</h1>
+    
+    <div class="info">
+        <strong>⚠️ IMPORTANT:</strong> Due to browser security restrictions with file:// protocol, 
+        you need to serve these files via a web server. Run this command in the terminal:
+        <pre style="background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px;">cd /Users/kiran/Desktop/code/playground/sipcalc
+python3 -m http.server 8888</pre>
+        Then open: <a href="http://localhost:8888/integration_tests.html" target="_blank">http://localhost:8888/integration_tests.html</a>
+        <br><br>
+        <strong>OR</strong> use the manual approach below ⬇️
+    </div>
+
+    <div class="summary">
+        <h2>Manual Testing Instructions</h2>
+        <p>Since automated iframe testing has file:// protocol restrictions, use this manual approach:</p>
+        <ol>
+            <li>Open the calculator below (shows in iframe)</li>
+            <li>Click "Run Tests" button</li>
+            <li>Tests will run directly in the iframe</li>
+            <li>Results appear below</li>
+        </ol>
+        <button onclick="runManualTests()">🚀 Run Tests</button>
+        <div class="stats" style="margin-top: 15px;">
+            <div class="stat total">
+                <div class="number" id="totalCount">0</div>
+                <div>Total Tests</div>
+            </div>
+            <div class="stat passed">
+                <div class="number" id="passedCount">0</div>
+                <div>Passed</div>
+            </div>
+            <div class="stat failed">
+                <div class="number" id="failedCount">0</div>
+                <div>Failed</div>
+            </div>
+        </div>
+    </div>
+
+    <h3>Calculator (Testing Target)</h3>
+    <iframe id="calculatorFrame" src="index.html"></iframe>
+    
+    <h3>Test Results</h3>
+    <div id="testResults"></div>
+
+    <script>
+        let totalTests = 0;
+        let passedTests = 0;
+        let failedTests = 0;
+
+        function updateStats() {
+            document.getElementById('totalCount').textContent = totalTests;
+            document.getElementById('passedCount').textContent = passedTests;
+            document.getElementById('failedCount').textContent = failedTests;
+        }
+
+        function parseAmount(str) {
+            return parseFloat(str.replace(/[₹,]/g, ''));
+        }
+
+        function formatAmount(num) {
+            return '₹' + Math.round(num).toLocaleString('en-IN');
+        }
+
+        function runTest(testName, doc, setupFn, expectedResults, tolerance = 5000) {
+            totalTests++;
+            
+            try {
+                const inputs = setupFn(doc);
+                
+                // Trigger calculation
+                const calc = document.getElementById('calculatorFrame').contentWindow;
+                if (typeof calc.calculateSip === 'function') {
+                    calc.calculateSip();
+                } else {
+                    throw new Error('calculateSip function not found');
+                }
+                
+                // Read results
+                const actual = {
+                    totalInvested: doc.getElementById('totalInvested').textContent,
+                    maturityValue: doc.getElementById('maturityValue').textContent,
+                    totalWithdrawn: doc.getElementById('totalWithdrawn').textContent,
+                    wealthGained: doc.getElementById('wealthGained').textContent,
+                };
+                
+                // Compare
+                let passed = true;
+                let details = '';
+                
+                for (let key in expectedResults) {
+                    const actualNum = parseAmount(actual[key]);
+                    const expectedNum = parseAmount(expectedResults[key]);
+                    const diff = Math.abs(actualNum - expectedNum);
+                    const match = diff <= tolerance;
+                    
+                    passed = passed && match;
+                    
+                    const resultClass = match ? 'match' : 'mismatch';
+                    details += `<div class="result-line ${resultClass}">`;
+                    details += `${match ? '✅' : '❌'} ${key}: `;
+                    details += `Expected ${expectedResults[key]}, Got ${actual[key]}`;
+                    if (!match) {
+                        details += ` (diff: ${formatAmount(diff)})`;
+                    }
+                    details += `</div>`;
+                }
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = passed ? 'test pass' : 'test fail';
+                testDiv.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-name">${testName}</div>
+                        <div class="test-status">${passed ? 'PASS' : 'FAIL'}</div>
+                    </div>
+                    <div class="test-details">
+                        <div style="margin-bottom: 10px; color: #666;">${inputs}</div>
+                        ${details}
+                    </div>
+                `;
+                
+                document.getElementById('testResults').appendChild(testDiv);
+                
+                if (passed) {
+                    passedTests++;
+                } else {
+                    failedTests++;
+                }
+                
+                updateStats();
+                
+            } catch (error) {
+                failedTests++;
+                updateStats();
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test fail';
+                testDiv.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-name">${testName}</div>
+                        <div class="test-status">ERROR</div>
+                    </div>
+                    <div class="test-details">
+                        <div class="result-line mismatch">❌ ${error.message}</div>
+                    </div>
+                `;
+                document.getElementById('testResults').appendChild(testDiv);
+            }
+        }
+
+        function runManualTests() {
+            const iframe = document.getElementById('calculatorFrame');
+            
+            // Check if iframe is accessible
+            let doc;
+            try {
+                doc = iframe.contentDocument || iframe.contentWindow.document;
+                if (!doc) {
+                    throw new Error('Cannot access iframe document');
+                }
+            } catch (error) {
+                alert('❌ Cannot access calculator iframe. This might be due to file:// protocol restrictions.\n\nPlease run a local web server:\n\npython3 -m http.server 8888\n\nThen open: http://localhost:8888/integration_tests.html');
+                return;
+            }
+            
+            // Clear previous results
+            document.getElementById('testResults').innerHTML = '';
+            totalTests = 0;
+            passedTests = 0;
+            failedTests = 0;
+            updateStats();
+            
+            // Wait a bit for calculator to initialize
+            setTimeout(() => {
+                try {
+                    // Check if element exists
+                    if (!doc.getElementById('existingInvestment_0')) {
+                        alert('❌ Calculator not fully loaded. Please wait a moment and try again.');
+                        return;
+                    }
+                    
+                    // Run tests
+                    runTest(
+                        'Test 1: Basic SIP - ₹10k/month, 12%, 10 years',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'SIP: ₹10k/mo | Return: 12% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹23,23,391',
+                            totalWithdrawn: '₹0',
+                            wealthGained: '₹11,23,391'
+                        }
+                    );
+
+                    runTest(
+                        'Test 2: With Existing Investment - ₹5L + ₹10k/mo',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '500000';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'Existing: ₹5L | SIP: ₹10k/mo | Return: 12% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹17,00,000',
+                            maturityValue: '₹39,73,584',
+                        },
+                        1000
+                    );
+
+                    runTest(
+                        'Test 3: Step-up SIP - 10% annual increase',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '10';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '5';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'SIP: ₹10k/mo | Step-up: 10%/yr | Return: 12% | Duration: 5y';
+                        },
+                        {
+                            totalInvested: '₹7,32,612',
+                            maturityValue: '₹9,84,570',
+                        },
+                        1000
+                    );
+
+                    runTest(
+                        'Test 4: Monthly SWP - ₹5k withdrawal',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'monthly';
+                            doc.getElementById('swpAmount').value = '5000';
+                            doc.getElementById('swpIncrease').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'SIP: ₹10k/mo | SWP: ₹5k/mo | Return: 12% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            totalWithdrawn: '₹6,00,000',
+                            maturityValue: '₹11,73,197',
+                        },
+                        1000
+                    );
+
+                    runTest(
+                        'Test 5: Post-Investment Growth - 10y + 10y',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '10';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'SIP: ₹10k/mo (10y) | Post-growth: 10y | Return: 12%';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹76,68,088',
+                        },
+                        1000
+                    );
+
+                    runTest(
+                        'Test 6: Tax Calculation - 10% LTCG',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '10';
+                            return 'SIP: ₹10k/mo | Return: 12% | Tax: 10% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹23,23,391',
+                            wealthGained: '₹11,23,391',
+                        }
+                    );
+
+                    runTest(
+                        'Test 7: Existing Only - ₹10L lump sum',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '1000000';
+                            doc.getElementById('monthlySip_0').value = '0';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '12';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'Existing: ₹10L | No SIP | Return: 12% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹10,00,000',
+                            maturityValue: '₹33,00,387',
+                        },
+                        10000
+                    );
+
+                    runTest(
+                        'Test 8: Zero Return - Edge case',
+                        doc,
+                        (doc) => {
+                            doc.getElementById('existingInvestment_0').value = '0';
+                            doc.getElementById('monthlySip_0').value = '10000';
+                            doc.getElementById('sipIncrease_0').value = '0';
+                            doc.getElementById('annualReturn_0').value = '0';
+                            doc.getElementById('years').value = '10';
+                            doc.getElementById('growthYears').value = '0';
+                            doc.getElementById('swpType').value = 'none';
+                            doc.getElementById('swpAmount').value = '0';
+                            doc.getElementById('inflation').value = '0';
+                            doc.getElementById('taxRate').value = '0';
+                            return 'SIP: ₹10k/mo | Return: 0% | Duration: 10y';
+                        },
+                        {
+                            totalInvested: '₹12,00,000',
+                            maturityValue: '₹12,00,000',
+                            wealthGained: '₹0',
+                        }
+                    );
+                    
+                    console.log(`Tests completed: ${totalTests} total, ${passedTests} passed, ${failedTests} failed`);
+                    
+                } catch (error) {
+                    alert('❌ Error running tests: ' + error.message);
+                    console.error(error);
+                }
+            }, 1000); // Wait 1 second for calculator to initialize
+        }
+    </script>
+</body>
+</html>
