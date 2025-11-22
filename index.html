@@ -5,102 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Multi-SIP, SWP, and Tax Calculator</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
             background-color: #f4f7f9;
             color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            line-height: 1.6;
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
         }
-        .calculator-container {
+        .header {
+            background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);
+            color: white;
+            padding: 12px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin: 0;
+        }
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 50px);
+            gap: 0;
+        }
+        .settings-panel {
             background-color: #ffffff;
-            padding: 25px 35px;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-            max-width: 800px;
-            width: 100%;
+            border-right: 2px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-        h2, h3 {
+        .results-panel {
+            background: linear-gradient(135deg, #e8eaf6 0%, #f3f4f9 100%);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        h2 {
             color: #1a237e;
-            text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            margin-top: 0;
         }
+        
+        /* Compact Fieldset */
         fieldset {
             border: 1px solid #ddd;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: #fafafa;
+            margin: 0;
         }
         legend {
-            font-size: 1.1em;
-            font-weight: bold;
+            font-size: 0.85em;
+            font-weight: 600;
             color: #3f51b5;
-            padding: 0 10px;
+            padding: 0 8px;
         }
 
+        /* Compact 2-column grid for inputs */
         .inputs-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 15px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
         }
         .input-group label {
-            margin-bottom: 6px;
+            margin-bottom: 3px;
             font-weight: 500;
-            font-size: 0.9em;
+            font-size: 0.75em;
             color: #555;
         }
         .input-group input, .input-group select {
-            padding: 10px;
+            padding: 6px 8px;
             border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1em;
+            border-radius: 4px;
+            font-size: 0.85em;
         }
         .input-group input[type="range"] {
             padding: 0;
         }
         .slider-group {
             grid-column: span 2;
-            padding-bottom: 10px; 
         }
         #yearsValue, #growthYearsValue {
             font-weight: bold;
             color: #3f51b5;
             text-align: center;
-            margin-top: 5px;
+            margin-top: 3px;
+            font-size: 0.8em;
         }
 
-        /* Styling for the new SIP group container */
+        /* Collapsible SIP Groups */
         .sip-group {
-            border: 1px dashed #cfd8dc;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            position: relative;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: white;
+            overflow: hidden;
         }
-        .sip-group h4 {
-            margin-top: 0;
-            color: #1a237e;
+        .sip-group-header {
+            background: #f5f5f5;
+            padding: 8px 10px;
+            cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 1em;
+            user-select: none;
+        }
+        .sip-group-header:hover {
+            background: #ebebeb;
+        }
+        .sip-group-header h4 {
+            margin: 0;
+            font-size: 0.85em;
+            color: #1a237e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sip-group-header .toggle-icon {
+            font-size: 0.9em;
+            transition: transform 0.2s;
+        }
+        .sip-group-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .sip-group-content {
+            padding: 10px;
+            display: none;
+        }
+        .sip-group-content.expanded {
+            display: block;
         }
         .remove-btn {
             background: #e57373;
             color: white;
             border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
+            border-radius: 3px;
+            padding: 3px 8px;
             cursor: pointer;
-            font-size: 0.8em;
-            transition: background 0.3s;
+            font-size: 0.7em;
+            transition: background 0.2s;
         }
         .remove-btn:hover {
             background: #d32f2f;
@@ -110,114 +167,163 @@
             color: white;
             padding: 8px;
             border: none;
-            border-radius: 6px;
+            border-radius: 5px;
             cursor: pointer;
-            margin-top: 10px;
-            font-size: 0.95em;
+            font-size: 0.8em;
             width: 100%;
-            transition: background-color 0.3s;
+            transition: background-color 0.2s;
+            margin-top: 5px;
         }
         .add-sip-btn:hover {
             background-color: #388e3c;
         }
         
+        /* Results Panel */
         .results {
-            margin-top: 30px;
-            background-color: #e8eaf6;
-            padding: 20px;
-            border-radius: 8px;
+            background-color: #ffffff;
+            padding: 18px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .results h3 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #1a237e;
+            font-size: 1.2em;
         }
         .results p {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
-            font-size: 1.05em;
+            margin: 8px 0;
+            font-size: 0.9em;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .results p.highlight {
+            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+            font-weight: 600;
+            font-size: 0.95em;
         }
         .results span {
-            font-weight: bold;
+            font-weight: 600;
+            color: #1a237e;
         }
-        @media (max-width: 600px) {
-            .inputs-grid {
+        .results hr {
+            margin: 12px 0;
+            border: none;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        /* Scrollbar styling */
+        .settings-panel::-webkit-scrollbar,
+        .results-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        .settings-panel::-webkit-scrollbar-track,
+        .results-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .settings-panel::-webkit-scrollbar-thumb,
+        .results-panel::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 3px;
+        }
+        .settings-panel::-webkit-scrollbar-thumb:hover,
+        .results-panel::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-container {
                 grid-template-columns: 1fr;
-            }
-             .slider-group {
-                grid-column: span 1;
+                grid-template-rows: 1fr 1fr;
             }
         }
     </style>
 </head>
 <body>
 
-<div class="calculator-container">
-    <h2>Advanced Multi-SIP, SWP, and Tax Calculator 📈</h2>
-    
-    <fieldset>
-        <legend>SIP & Investment Details</legend>
+<div class="header">
+    <h1>📈 Advanced Multi-SIP, SWP, and Tax Calculator</h1>
+</div>
+
+<div class="main-container">
+    <!-- Left Panel: Settings -->
+    <div class="settings-panel">
+        <h2>Investment Settings</h2>
         
-        <div id="sipInputsContainer">
+        <fieldset>
+            <legend>SIP Portfolios</legend>
+            
+            <div id="sipInputsContainer">
             </div>
 
-        <button class="add-sip-btn" id="addSipBtn" type="button">➕ Add another SIP portfolio</button>
-        
-    </fieldset>
+            <button class="add-sip-btn" id="addSipBtn" type="button">➕ Add another SIP portfolio</button>
+            
+        </fieldset>
 
-    <fieldset>
-        <legend>SWP & Withdrawal Details</legend>
-        <div class="inputs-grid">
-            <div class="input-group">
-                <label for="swpType">Withdrawal (SWP)</label>
-                <select id="swpType" title="Systematic Withdrawal Plan (SWP) frequency.">
-                    <option value="none">None</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
+        <fieldset>
+            <legend>SWP & Withdrawal</legend>
+            <div class="inputs-grid">
+                <div class="input-group">
+                    <label for="swpType">Withdrawal Type</label>
+                    <select id="swpType" title="Systematic Withdrawal Plan (SWP) frequency.">
+                        <option value="none">None</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="swpAmount">Amount (₹)</label>
+                    <input type="number" id="swpAmount" value="0" placeholder="e.g., 5000" title="The amount you withdraw from the corpus at the selected SWP frequency.">
+                </div>
+                 <div class="input-group">
+                    <label for="swpIncrease">Annual Increase (%)</label>
+                    <input type="number" id="swpIncrease" value="0" placeholder="e.g., 5" title="The percentage by which your SWP amount increases each year to account for inflation.">
+                </div>
             </div>
-            <div class="input-group">
-                <label for="swpAmount">Withdrawal Amount (₹)</label>
-                <input type="number" id="swpAmount" value="0" placeholder="e.g., 5000" title="The amount you withdraw from the corpus at the selected SWP frequency.">
+        </fieldset>
+
+        <fieldset>
+            <legend>Duration & Parameters</legend>
+            <div class="inputs-grid">
+                 <div class="input-group">
+                    <label for="inflation">Inflation Rate (%)</label>
+                    <input type="number" id="inflation" value="6" placeholder="e.g., 6" title="Used to calculate the real, purchasing power-adjusted value of your maturity amount.">
+                </div>
+                <div class="input-group">
+                    <label for="taxRate">Tax Rate (%)</label>
+                    <input type="number" id="taxRate" value="10" placeholder="e.g., 10" title="Long Term Capital Gains (LTCG) tax rate applied to the total profits (Maturity Value - Total Invested).">
+                </div>
+                 <div class="input-group slider-group">
+                    <label for="years" title="The total duration over which you will continue making the monthly SIP and/or SWP withdrawals.">Investment Period (Years)</label>
+                    <input type="range" id="years" min="1" max="50" value="10">
+                    <span id="yearsValue">10 years</span>
+                </div>
+
+                 <div class="input-group slider-group">
+                    <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Investment Growth (Years)</label>
+                    <input type="range" id="growthYears" min="0" max="50" value="0">
+                    <span id="growthYearsValue">0 years</span>
+                </div>
             </div>
-             <div class="input-group">
-                <label for="swpIncrease">Annual SWP Increase (%)</label>
-                <input type="number" id="swpIncrease" value="0" placeholder="e.g., 5" title="The percentage by which your SWP amount increases each year to account for inflation.">
-            </div>
+        </fieldset>
+    </div>
+
+    <!-- Right Panel: Results -->
+    <div class="results-panel">
+        <div class="results">
+            <h3>Investment Summary 📊</h3>
+            <p>Total Duration: <span id="totalDuration">0 years</span></p>
+            <p>Total Amount Invested: <span id="totalInvested">₹0</span></p>
+            <p>Total Amount Withdrawn: <span id="totalWithdrawn">₹0</span></p>
+            <p class="highlight"><b>Wealth Gained:</b> <span id="wealthGained">₹0</span></p>
+            <hr>
+            <p>Maturity Value: <span id="maturityValue">₹0</span></p>
+            <p>Value After Tax: <span id="valueAfterTax">₹0</span></p>
+            <p class="highlight"><b>Inflation-Adjusted Value:</b> <span id="inflationAdjustedValue">₹0</span></p>
         </div>
-    </fieldset>
-
-    <fieldset>
-        <legend>Duration & Financial Parameters</legend>
-        <div class="inputs-grid">
-             <div class="input-group">
-                <label for="inflation">Annual Inflation Rate (%)</label>
-                <input type="number" id="inflation" value="6" placeholder="e.g., 6" title="Used to calculate the real, purchasing power-adjusted value of your maturity amount.">
-            </div>
-            <div class="input-group">
-                <label for="taxRate">Capital Gains Tax (%)</label>
-                <input type="number" id="taxRate" value="10" placeholder="e.g., 10" title="Long Term Capital Gains (LTCG) tax rate applied to the total profits (Maturity Value - Total Invested).">
-            </div>
-             <div class="input-group slider-group">
-                <label for="years" title="The total duration over which you will continue making the monthly SIP and/or SWP withdrawals.">Investment Period (Years) - *SIP/SWP duration*</label>
-                <input type="range" id="years" min="1" max="50" value="10">
-                <span id="yearsValue">10 years</span>
-            </div>
-
-             <div class="input-group slider-group">
-                <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Investment Growth Period (Years) - *After SIP ends*</label>
-                <input type="range" id="growthYears" min="0" max="50" value="0">
-                <span id="growthYearsValue">0 years</span>
-            </div>
-        </div>
-    </fieldset>
-    
-    <div class="results">
-        <h3>Investment Summary 📊</h3>
-        <p>Total Duration: <span id="totalDuration">0 years</span></p>
-        <p>Total Amount Invested: <span id="totalInvested">₹0</span></p>
-        <p>Total Amount Withdrawn: <span id="totalWithdrawn">₹0</span></p>
-        <p><b>Wealth Gained:</b> <span id="wealthGained">₹0</span></p>
-        <hr>
-        <p>Maturity Value: <span id="maturityValue">₹0</span></p>
-        <p>Value After Tax: <span id="valueAfterTax">₹0</span></p>
-        <p><b>Inflation-Adjusted Value (Today's Worth):</b> <span id="inflationAdjustedValue">₹0</span></p>
     </div>
 </div>
 
@@ -258,34 +364,52 @@
     // --- SIP Group Management ---
 
     function createSipGroupHtml(index, monthlySipValue = 10000, sipIncreaseValue = 10, annualReturnValue = 12, existingInvestmentValue = 0) {
-        const title = index === 0 ? "Default SIP Portfolio" : `SIP Portfolio #${index + 1}`;
+        const title = index === 0 ? "Portfolio 1" : `Portfolio ${index + 1}`;
         const removeButton = index > 0 
-            ? `<button class="remove-btn" type="button" onclick="removeSipGroup(this)">Remove</button>`
+            ? `<button class="remove-btn" type="button" onclick="removeSipGroup(this)">✕</button>`
             : '';
 
         return `
             <div class="sip-group" data-index="${index}">
-                <h4>${title} ${removeButton}</h4>
-                <div class="inputs-grid">
-                    <div class="input-group">
-                        <label for="existingInvestment_${index}">Existing Investment (₹)</label>
-                        <input type="number" id="existingInvestment_${index}" value="${existingInvestmentValue}" placeholder="e.g., 500000" title="The current market value of your existing funds for this specific portfolio.">
-                    </div>
-                    <div class="input-group">
-                        <label for="monthlySip_${index}">Monthly SIP (₹)</label>
-                        <input type="number" id="monthlySip_${index}" value="${monthlySipValue}" placeholder="e.g., 10000" title="The fixed amount you invest every month.">
-                    </div>
-                    <div class="input-group">
-                        <label for="sipIncrease_${index}">Annual SIP Increase (%)</label>
-                        <input type="number" id="sipIncrease_${index}" value="${sipIncreaseValue}" placeholder="e.g., 10" title="The percentage by which your monthly SIP amount increases each year (Step-up SIP).">
-                    </div>
-                    <div class="input-group">
-                        <label for="annualReturn_${index}">Expected Annual Return (%)</label>
-                        <input type="number" id="annualReturn_${index}" value="${annualReturnValue}" placeholder="e.g., 12" title="The average annual rate of return you expect from this investment.">
+                <div class="sip-group-header" onclick="toggleSipGroup(this)">
+                    <h4><span class="toggle-icon">▼</span> ${title}</h4>
+                    <div>${removeButton}</div>
+                </div>
+                <div class="sip-group-content expanded">
+                    <div class="inputs-grid">
+                        <div class="input-group">
+                            <label for="existingInvestment_${index}">Existing Inv. (₹)</label>
+                            <input type="number" id="existingInvestment_${index}" value="${existingInvestmentValue}" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="monthlySip_${index}">Monthly SIP (₹)</label>
+                            <input type="number" id="monthlySip_${index}" value="${monthlySipValue}" placeholder="10000">
+                        </div>
+                        <div class="input-group">
+                            <label for="sipIncrease_${index}">Annual Increase (%)</label>
+                            <input type="number" id="sipIncrease_${index}" value="${sipIncreaseValue}" placeholder="10">
+                        </div>
+                        <div class="input-group">
+                            <label for="annualReturn_${index}">Annual Return (%)</label>
+                            <input type="number" id="annualReturn_${index}" value="${annualReturnValue}" placeholder="12">
+                        </div>
                     </div>
                 </div>
             </div>
         `;
+    }
+    
+    function toggleSipGroup(header) {
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('.toggle-icon');
+        
+        if (content.classList.contains('expanded')) {
+            content.classList.remove('expanded');
+            header.classList.add('collapsed');
+        } else {
+            content.classList.add('expanded');
+            header.classList.remove('collapsed');
+        }
     }
 
     function addSipGroup() {
@@ -303,9 +427,15 @@
         document.querySelectorAll('.sip-group').forEach((g) => {
             g.setAttribute('data-index', newIndex);
             
-            g.querySelector('h4').innerHTML = newIndex === 0 
-                ? 'Default SIP Portfolio' 
-                : `SIP Portfolio #${newIndex + 1} <button class="remove-btn" type="button" onclick="removeSipGroup(this)">Remove</button>`;
+            const titleText = newIndex === 0 ? 'Portfolio 1' : `Portfolio ${newIndex + 1}`;
+            const header = g.querySelector('.sip-group-header h4');
+            const icon = header.querySelector('.toggle-icon');
+            header.innerHTML = `<span class="toggle-icon">${icon.textContent}</span> ${titleText}`;
+            
+            if (newIndex > 0) {
+                const headerDiv = g.querySelector('.sip-group-header > div');
+                headerDiv.innerHTML = '<button class="remove-btn" type="button" onclick="removeSipGroup(this)">✕</button>';
+            }
             
             // Update IDs in the group 
             g.querySelectorAll('input').forEach(input => {
