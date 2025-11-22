@@ -199,6 +199,30 @@
         .sip-group-content.expanded {
             display: block;
         }
+        
+        /* SWP Timing Controls */
+        .swp-timing {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #ddd;
+            display: none;
+        }
+        .swp-timing.visible {
+            display: block;
+        }
+        .swp-timing-header {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        #swpStartValue, #swpEndValue {
+            font-weight: bold;
+            color: #3f51b5;
+            text-align: center;
+            margin-top: 3px;
+            font-size: 0.75em;
+        }
         .remove-btn {
             background: #e57373;
             color: white;
@@ -333,6 +357,22 @@
                     <input type="number" id="swpIncrease" value="0" placeholder="e.g., 5" title="The percentage by which your SWP amount increases each year to account for inflation.">
                 </div>
             </div>
+            
+            <div class="swp-timing" id="swpTimingSection">
+                <div class="swp-timing-header">⏱️ SWP Duration (when to start and stop withdrawals)</div>
+                <div class="inputs-grid">
+                    <div class="input-group">
+                        <label for="swpStartYear">Start Year</label>
+                        <input type="range" id="swpStartYear" min="0" max="50" value="0">
+                        <span id="swpStartValue">Year 0 (immediate)</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="swpEndYear">End Year</label>
+                        <input type="range" id="swpEndYear" min="1" max="50" value="50">
+                        <span id="swpEndValue">Year 50 (max)</span>
+                    </div>
+                </div>
+            </div>
         </fieldset>
 
         <fieldset>
@@ -392,6 +432,12 @@
     const yearsValueSpan = document.getElementById('yearsValue');
     const growthYearsSlider = document.getElementById('growthYears');
     const growthYearsValueSpan = document.getElementById('growthYearsValue');
+    const swpStartSlider = document.getElementById('swpStartYear');
+    const swpStartValueSpan = document.getElementById('swpStartValue');
+    const swpEndSlider = document.getElementById('swpEndYear');
+    const swpEndValueSpan = document.getElementById('swpEndValue');
+    const swpTypeSelect = document.getElementById('swpType');
+    const swpTimingSection = document.getElementById('swpTimingSection');
     const sipInputsContainer = document.getElementById('sipInputsContainer');
     const addSipBtn = document.getElementById('addSipBtn');
     let sipGroupIndex = 0; 
@@ -405,6 +451,46 @@
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(Math.round(value));
+    }
+    
+    // Update SWP timing section visibility and constraints
+    function updateSwpTimingControls() {
+        const swpType = swpTypeSelect.value;
+        const totalYears = parseInt(yearsSlider.value) + parseInt(growthYearsSlider.value);
+        
+        // Show/hide SWP timing section
+        if (swpType === 'none') {
+            swpTimingSection.classList.remove('visible');
+        } else {
+            swpTimingSection.classList.add('visible');
+            
+            // Update max values for SWP timing sliders
+            swpStartSlider.max = totalYears;
+            swpEndSlider.max = totalYears;
+            
+            // Ensure end year is at least equal to start year
+            if (parseInt(swpEndSlider.value) < parseInt(swpStartSlider.value)) {
+                swpEndSlider.value = swpStartSlider.value;
+            }
+            
+            // Update default end year to total duration if it's still at an invalid value
+            if (parseInt(swpEndSlider.value) > totalYears) {
+                swpEndSlider.value = totalYears;
+            }
+            
+            updateSwpTimingLabels();
+        }
+    }
+    
+    function updateSwpTimingLabels() {
+        const startYear = parseInt(swpStartSlider.value);
+        const endYear = parseInt(swpEndSlider.value);
+        
+        swpStartValueSpan.textContent = startYear === 0 
+            ? 'Year 0 (immediate)' 
+            : `Year ${startYear}`;
+        
+        swpEndValueSpan.textContent = `Year ${endYear}`;
     }
 
     function addInputListeners() {
@@ -541,6 +627,8 @@
         const swpType = document.getElementById('swpType').value;
         const swpAmount = parseFloat(document.getElementById('swpAmount').value) || 0;
         const annualSwpIncrease = parseFloat(document.getElementById('swpIncrease').value) / 100 || 0;
+        const swpStartYear = parseInt(document.getElementById('swpStartYear').value) || 0;
+        const swpEndYear = parseInt(document.getElementById('swpEndYear').value) || (investmentYears + postInvestmentGrowthYears);
         const inflation = parseFloat(document.getElementById('inflation').value) / 100 || 0;
         const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
         const postGrowthReturn = parseFloat(document.getElementById('postGrowthReturn').value) / 100 || 0;
@@ -548,6 +636,8 @@
         const totalGrowthYears = investmentYears + postInvestmentGrowthYears;
         const investmentMonths = investmentYears * 12;
         const postInvestmentGrowthMonths = postInvestmentGrowthYears * 12;
+        const swpStartMonth = swpStartYear * 12 + 1; // +1 because month 1 is the first month
+        const swpEndMonth = swpEndYear * 12;
         
         // --- 2. Initialize portfolios and tracking variables ---
         const portfolios = getInitialPortfolios();
@@ -583,8 +673,8 @@
             });
             corpus += totalGrowth / portfolios.length;
 
-            // 3c. Apply SWP withdrawal (after growth)
-            if (currentSwpAmount > 0) {
+            // 3c. Apply SWP withdrawal (after growth) - only if within SWP timing window
+            if (currentSwpAmount > 0 && month >= swpStartMonth && month <= swpEndMonth) {
                 if (swpType === 'monthly') {
                     corpus -= currentSwpAmount;
                     totalWithdrawn += currentSwpAmount;
@@ -601,7 +691,7 @@
                         currentMonthlySips[index] *= (1 + p.annualSipIncrease);
                     }
                 });
-                if (annualSwpIncrease > 0) {
+                if (annualSwpIncrease > 0 && month >= swpStartMonth && month <= swpEndMonth) {
                     currentSwpAmount *= (1 + annualSwpIncrease);
                 }
             }
@@ -609,6 +699,8 @@
         
         // --- 4. Post-Investment Growth Period (No SIP + Growth + SWP) ---
         for (let month = 1; month <= postInvestmentGrowthMonths; month++) {
+            const absoluteMonth = investmentMonths + month; // Absolute month number from start
+            
             // 4a. Apply growth using either custom post-growth rate or portfolio average
             let monthlyReturn;
             if (postGrowthReturn > 0) {
@@ -630,8 +722,8 @@
                 corpus += corpus * monthlyReturn;
             }
 
-            // 4b. Apply SWP withdrawal (after growth)
-            if (currentSwpAmount > 0) {
+            // 4b. Apply SWP withdrawal (after growth) - only if within SWP timing window
+            if (currentSwpAmount > 0 && absoluteMonth >= swpStartMonth && absoluteMonth <= swpEndMonth) {
                 if (swpType === 'monthly') {
                     corpus -= currentSwpAmount;
                     totalWithdrawn += currentSwpAmount;
@@ -643,7 +735,7 @@
 
             // 4c. Process annual SWP increases
             if (month % 12 === 0 && month < postInvestmentGrowthMonths) {
-                if (annualSwpIncrease > 0) {
+                if (annualSwpIncrease > 0 && absoluteMonth >= swpStartMonth && absoluteMonth <= swpEndMonth) {
                     currentSwpAmount *= (1 + annualSwpIncrease);
                 }
             }
@@ -678,10 +770,38 @@
     // Slider Listeners (Calls calculateSip for automatic updates)
     yearsSlider.addEventListener('input', () => {
         yearsValueSpan.textContent = `${yearsSlider.value} years`;
+        updateSwpTimingControls();
         calculateSip();
     });
     growthYearsSlider.addEventListener('input', () => {
         growthYearsValueSpan.textContent = `${growthYearsSlider.value} years`;
+        updateSwpTimingControls();
+        calculateSip();
+    });
+    
+    // SWP Type listener
+    swpTypeSelect.addEventListener('change', () => {
+        updateSwpTimingControls();
+        calculateSip();
+    });
+    
+    // SWP Timing listeners
+    swpStartSlider.addEventListener('input', () => {
+        updateSwpTimingLabels();
+        // Ensure end is not before start
+        if (parseInt(swpEndSlider.value) < parseInt(swpStartSlider.value)) {
+            swpEndSlider.value = swpStartSlider.value;
+            updateSwpTimingLabels();
+        }
+        calculateSip();
+    });
+    swpEndSlider.addEventListener('input', () => {
+        updateSwpTimingLabels();
+        // Ensure end is not before start
+        if (parseInt(swpEndSlider.value) < parseInt(swpStartSlider.value)) {
+            swpEndSlider.value = swpStartSlider.value;
+            updateSwpTimingLabels();
+        }
         calculateSip();
     });
     
@@ -704,6 +824,12 @@
     
     yearsValueSpan.textContent = `${initialYears} years`;
     growthYearsValueSpan.textContent = `${initialGrowthYears} years`;
+    
+    // Initialize SWP timing controls
+    swpStartSlider.value = 0;
+    swpEndSlider.value = initialYears + initialGrowthYears;
+    updateSwpTimingControls();
+    updateSwpTimingLabels();
 
     // Recalculate on input change
     addInputListeners();
