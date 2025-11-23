@@ -138,13 +138,13 @@
             transform: translateX(-50%);
             background: #1a237e;
             color: white;
-            padding: 10px;
+            padding: 12px 14px;
             border-radius: 6px;
-            font-size: 0.85em;
-            width: 250px;
+            font-size: 1em;
+            width: 300px;
             z-index: 1000;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            line-height: 1.4;
+            line-height: 1.6;
             font-weight: normal;
         }
         .tooltip::after {
@@ -367,7 +367,12 @@
                         <span id="swpStartValue">Year 0 (immediate)</span>
                     </div>
                     <div class="input-group">
-                        <label for="swpEndYear">End Year</label>
+                        <label class="label-with-info">
+                            End Year
+                            <span class="info-icon">i
+                                <span class="tooltip">SWP withdrawals can only go up to the total duration (Investment Period + Post Investment Growth Period). To increase the maximum, adjust those parameters below in the Duration & Parameters section.</span>
+                            </span>
+                        </label>
                         <input type="range" id="swpEndYear" min="1" max="50" value="50">
                         <span id="swpEndValue">Year 50 (max)</span>
                     </div>
@@ -393,7 +398,12 @@
                 </div>
 
                  <div class="input-group">
-                    <label for="growthYears" title="The number of years the corpus continues to grow *after* the Investment Period ends. No further SIP contributions are made during this time.">Post-Growth Period (Years)</label>
+                    <label class="label-with-info">
+                        Post Investment Growth Period (Years)
+                        <span class="info-icon">i
+                            <span class="tooltip">Number of years your money continues to grow AFTER you stop making SIP contributions. Useful for modeling retirement planning where investments grow without new contributions.</span>
+                        </span>
+                    </label>
                     <input type="range" id="growthYears" min="0" max="50" value="0">
                     <span id="growthYearsValue">0 years</span>
                 </div>
@@ -457,6 +467,8 @@
     function updateSwpTimingControls() {
         const swpType = swpTypeSelect.value;
         const totalYears = parseInt(yearsSlider.value) + parseInt(growthYearsSlider.value);
+        const currentEndYear = parseInt(swpEndSlider.value);
+        const wasAtMax = currentEndYear >= parseInt(swpEndSlider.max);
         
         // Show/hide SWP timing section
         if (swpType === 'none') {
@@ -468,14 +480,14 @@
             swpStartSlider.max = totalYears;
             swpEndSlider.max = totalYears;
             
+            // Auto-adjust end year to new max if it was previously at max
+            if (wasAtMax || currentEndYear > totalYears) {
+                swpEndSlider.value = totalYears;
+            }
+            
             // Ensure end year is at least equal to start year
             if (parseInt(swpEndSlider.value) < parseInt(swpStartSlider.value)) {
                 swpEndSlider.value = swpStartSlider.value;
-            }
-            
-            // Update default end year to total duration if it's still at an invalid value
-            if (parseInt(swpEndSlider.value) > totalYears) {
-                swpEndSlider.value = totalYears;
             }
             
             updateSwpTimingLabels();
